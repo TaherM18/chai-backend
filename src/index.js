@@ -6,7 +6,19 @@ import connectDB from "./db/connection.js";
 // });
 
 // Better approach
-connectDB();
+connectDB()
+.then(() => {
+    app.on("error", (error) => {
+        console.error(`INTERNAL SERVER ERROR:\n${error}`);
+    });
+
+    app.listen(process.env.PORT || 8000, () => {
+        console.log(`Server running on port: ${process.env.PORT}`);
+    });
+})
+.catch((err) => {
+    console.error(`ERROR: MongoDB connection failed:\n ${err}`);
+});
 
 
 // Initial approach
