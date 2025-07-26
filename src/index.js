@@ -9,7 +9,7 @@ import connectDB from "./db/connection.js";
 connectDB()
 .then(() => {
     app.on("error", (error) => {
-        console.error(`INTERNAL SERVER ERROR:\n${error}`);
+        console.error(`SERVER ERROR:\n${error}`);
     });
 
     app.listen(process.env.PORT || 8000, () => {
