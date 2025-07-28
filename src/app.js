@@ -15,10 +15,20 @@ const urlencodedOptions = {
     limit: "16KB"
 }
 
+// Middlewares
+
 app.use(cors(corsOptions));
 app.use(express.json(jsonOptions));
 app.use(express.urlencoded(urlencodedOptions));
 app.use(express.static("public"));
 app.use(cookieParser());
+
+// Routes Import
+
+import userRouter from "./routes/user.routes.js";
+
+// Routes Declaration
+
+app.use("/api/v1/user", userRouter);
 
 export { app };
