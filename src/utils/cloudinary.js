@@ -27,4 +27,4 @@ async function uploadToCloudinary(localFilePath) {
     }
 }
 
-export { uploadToCloudinary }
+export { uploadToCloudinary };
