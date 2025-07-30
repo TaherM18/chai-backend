@@ -4,7 +4,7 @@ import { DB_NAME } from "../constants.js";
 
 async function connectDB () {
     try {
-        const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`);
+        const connectionInstance = await mongoose.connect(`${process.env.LOCAL_MONGODB_URI}/${DB_NAME}`);
         console.log(`\nMongoDB connected! Host: ${connectionInstance.connection.host}\n`);
     }
     catch (error) {

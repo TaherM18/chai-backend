@@ -35,7 +35,7 @@ const userSchema = mongoose.Schema(
         watchHistory: [
             {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: "Video"
+                ref: "Video",
             }
         ],
         password: {
@@ -44,8 +44,6 @@ const userSchema = mongoose.Schema(
         },
         refreshToken: {
             type: String,
-            required: true,
-
         }
     },
     {

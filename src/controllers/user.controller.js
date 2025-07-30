@@ -6,16 +6,22 @@ import { uploadToCloudinary } from "../utils/cloudinary.js";
 
 const registerUser = asyncHandler( async function(req, res) {
 
-    console.log(`Request Body:\n${JSON.stringify(req.body)}`);
-    console.log(`Request Flies:\n${JSON.stringify(req.files)}`);
+    console.log("\nDEBUG: Request Body:\n", JSON.stringify(req.body));
+    console.log("\nDEBUG: Request Files:\n", JSON.stringify(req.files));
+
+    const keys = ["username", "email", "fullname", "password"];
+
+    if (!req.body || Object.keys(req.body).some((field) => !keys.includes(field))) {
+        throw new ApiError(400, "Request body empty or does not contain required fields");
+    }
 
     const { username, email, fullname, password } = req.body;
 
     if ( [username, email, fullname, password].some((field) => field?.trim() === "") ) {
-        throw new ApiError(400, "All field are required");
+        throw new ApiError(400, "One or required fields is empty");
     }
 
-    const existingUser = User.findOne({
+    const existingUser = await User.findOne({
         $or: [{ username }, { email }]
     });
 
@@ -23,8 +29,8 @@ const registerUser = asyncHandler( async function(req, res) {
         throw new ApiError(409, "User with username or email already exists");
     }
 
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar image is required");
@@ -43,11 +49,10 @@ const registerUser = asyncHandler( async function(req, res) {
         fullname,
         password,
         avatar: avatar.url,
-        coverImage: coverImage?.url || "",
-        refreshToken: ""
+        coverImage: coverImage?.url || ""
     });
 
-    const foundUser = User.findById(createdUser._id).select("-password -refreshToken");
+    const foundUser = await User.findById(createdUser._id).select("-password -refreshToken");
 
     if (!foundUser) {
         throw new ApiError(500, "Failed to create user");
