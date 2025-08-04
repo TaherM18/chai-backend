@@ -5,6 +5,7 @@ import ApiResponse from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 
+// #region generateAccessAndRefreshToken 
 async function generateAccessAndRefreshTokens(userId) {
     try {
         const user = await User.findById(userId);
@@ -19,8 +20,10 @@ async function generateAccessAndRefreshTokens(userId) {
 
     }
 }
+// #endregion
 
-const registerUser = asyncHandler( async function(req, res) {
+// #region registerUser
+export const registerUser = asyncHandler( async function(req, res) {
 
     console.log("\nDEBUG: Request Body:\n", JSON.stringify(req.body));
     console.log("\nDEBUG: Request Files:\n", JSON.stringify(req.files));
@@ -78,8 +81,10 @@ const registerUser = asyncHandler( async function(req, res) {
         new ApiResponse(201, foundUser, "User created successfully")
     );
 });
+// #endregion
 
-const loginUser = asyncHandler(async function (req, res) {
+// #region loginUser
+export const loginUser = asyncHandler(async function (req, res) {
     const { username, email } = req.body;
 
     if (!username && !email) {
@@ -97,7 +102,7 @@ const loginUser = asyncHandler(async function (req, res) {
         throw new ApiError(404, "User does not exist");
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
+    const isPasswordValid = await user.checkIsPasswordCorrect(password);
 
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid user credentials");
@@ -121,8 +126,10 @@ const loginUser = asyncHandler(async function (req, res) {
         "Login successful"
     ));
 });
+// #endregion
 
-const logoutUser = asyncHandler(async function (req, res) {
+// #region logoutUser 
+export const logoutUser = asyncHandler(async function (req, res) {
     await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -145,8 +152,10 @@ const logoutUser = asyncHandler(async function (req, res) {
     .clearCookie("refreshToken", cookieOptions)
     .json(new ApiResponse(200, {}, "User logged out sucessfully"));
 });
+// #endregion
 
-const refreshAccessToken = asyncHandler(async function (req, res) {
+//#region refreshAccessToken
+export const refreshAccessToken = asyncHandler(async function (req, res) {
     const receivedRefreshToken = req.cookie.refreshToken || req.body.refreshToken;
 
     if (!receivedRefreshToken) {
@@ -192,5 +201,65 @@ const refreshAccessToken = asyncHandler(async function (req, res) {
         throw new ApiError(401,"Token is invalid or expired");
     }
 });
+// #endregion
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+// #region changePassword
+export const changePassword = asyncHandler( async function (req, res) {
+    if (!req.user) {
+        throw new ApiError(400, "Unauthorized request");
+    }
+
+    const user = req.user;
+
+    const { currentPassword, newPassword } = req.body;
+
+    const isPasswordCorrect = user.checkIsPasswordCorrect(currentPassword);
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Current password is incorrect");
+    }
+
+    // validate new password
+    const passRegex = /(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])[\\w\\W]{8}/;
+    if (!newPassword || passRegex.match(newPassword)) {
+        throw new ApiError(301, "New password is empty or does not fulfill the validation requirements");
+    }
+
+    user.password = newPassword;
+
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
+// #endregion
+
+// #region getCurrentUser
+export const getCurrentUser = asyncHandler( async function (req, res) {
+    return res.status(200)
+    .json(new ApiResponse(200, { user: req.user }, "User found successfully"));
+});
+// #endregion
+
+// #region changeAvatar
+export const changeAvatar = asyncHandler(async function (req, res) {
+    // receive file from multer middleware
+    const avatarLocalPath = req.file?.path;
+
+    if (!avatarLocalPath) {
+        throw new ApiError(301, "Avatar image is missing");
+    }
+    // receive user from auth middleware
+    const user = req.user;
+
+    const avatarObj = await uploadToCloudinary(avatarLocalPath);
+
+    if (!avatarObj) {
+        throw new ApiError(500, "Failed to upload avatar image");
+    }
+
+    user.avatar = avatarObj.url;
+
+    await user.save({ validateBeforeSave: false });
+});
+// #endregion
