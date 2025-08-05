@@ -242,6 +242,33 @@ export const getCurrentUser = asyncHandler( async function (req, res) {
 });
 // #endregion
 
+// #region updateUserAccount
+export const updateUserAccount = asyncHandler( async function (req, res) {
+
+    const { username, fullname } = req.body;
+
+    if (!(username || fullname)) {
+        throw new ApiError(400, "Either username or fullname is empty")
+    }
+    
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                username,
+                fullname
+            }
+        },
+        {
+            new: true
+        }
+    );
+
+    return res.status(200)
+    .json(new ApiResponse(200, { updatedUser }, "User account updated successfully"));
+});
+// #endregion
+
 // #region changeAvatar
 export const changeAvatar = asyncHandler(async function (req, res) {
     // receive file from multer middleware
@@ -262,6 +289,14 @@ export const changeAvatar = asyncHandler(async function (req, res) {
     user.avatar = avatarObj.url;
 
     await user.save({ validateBeforeSave: false });
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user,
+        "User avatar changed successfully"
+    ));
 });
 // #endregion
 
