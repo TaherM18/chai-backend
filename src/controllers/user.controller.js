@@ -4,6 +4,7 @@ import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 
 // #region generateAccessAndRefreshToken 
 async function generateAccessAndRefreshTokens(userId) {
@@ -261,5 +262,140 @@ export const changeAvatar = asyncHandler(async function (req, res) {
     user.avatar = avatarObj.url;
 
     await user.save({ validateBeforeSave: false });
+});
+// #endregion
+
+// #region getUserChannelProfile
+export const getUserChannelProfile = asyncHandler(async function (req, res) {
+    const {username} = req.params;
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is required");
+    }
+
+    const channel = User.aggregate([
+        {
+            $match: { username: username.toLowerCase() }
+        },
+        {
+            $lookup: {
+                from: "Subscription",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "Subscription",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: { $size: "$subscribers" },
+                subscribedToCount: { $size: "$subscribedTo" },
+                isSubscribed: { 
+                    $cond: {
+                        if: { $in: [ req.user?._id, "$subscribers.subscriber" ] },
+                        then: true,
+                        else: false
+                    } 
+                }
+            }
+        },
+        {
+            $project: {
+                username: 1,
+                fullname: 1,
+                email: 1,
+                avatar: 1,
+                coverImage: 1,
+                createdAt: 1,
+                subscriberCount: 1,
+                subscribedToCount: 1
+            }
+        }
+    ]);
+
+    if (!channel?.length) {
+        throw new ApiError(404, "Channel not found");
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, channel[0], "User profile data fetched successfully"));
+});
+// #endregion
+
+//#region getWatchHistory
+export const getWatchHistory = asyncHandler(async function (req, res) {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Schema.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: "Video",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
+                    {
+                        $lookup: {
+                            from: "User",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullname: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    // inner pipeline alternative
+                    // {
+                    //     $project: {
+                    //         username: 1,
+                    //         email: 1,
+                    //         avatar: 1
+                    //     }
+                    // }
+                    {
+                        $addFields: {
+                            owner : {
+                                $first: "$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        // {
+        //     $project: {
+        //         watchHistory: 1
+        //     }
+        // },
+        // {
+        //     $addFields: {
+        //         watchHistory: {
+        //             $first: "$watchHistory"
+        //         }
+        //     }
+        // }
+    ]);
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"));
 });
 // #endregion
