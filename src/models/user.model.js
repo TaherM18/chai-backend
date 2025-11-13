@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
+// #region Schema
 const userSchema = mongoose.Schema(
     {
         username: {
@@ -50,6 +51,7 @@ const userSchema = mongoose.Schema(
         timestamps: true
     }
 );
+// #endregion
 
 userSchema.pre("save", async function(next) {
     if (this.isModified("password")) {
@@ -58,6 +60,7 @@ userSchema.pre("save", async function(next) {
     next();
 });
 
+// #region Methods
 userSchema.methods.checkIsPasswordCorrect = async function(password) {
     return await bcrypt.compare(password, this.password);
 };
@@ -91,5 +94,6 @@ userSchema.methods.generateRefreshToken = function() {
         }
     );
 };
+// #endregion
 
 export const User = mongoose.model("User", userSchema);

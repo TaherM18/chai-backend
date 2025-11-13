@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import mongoose from "mongoose";
+import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js"
 import ApiResponse from "../utils/ApiResponse.js"
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
-import mongoose from "mongoose";
 
 // #region generateAccessAndRefreshToken 
 async function generateAccessAndRefreshTokens(userId) {
@@ -29,11 +29,11 @@ export const registerUser = asyncHandler( async function(req, res) {
     console.log("\nDEBUG: Request Body:\n", JSON.stringify(req.body));
     console.log("\nDEBUG: Request Files:\n", JSON.stringify(req.files));
 
-    const keys = ["username", "email", "fullname", "password"];
+    // const keys = ["username", "email", "fullname", "password"];
 
-    if (!req.body || Object.keys(req.body).some((field) => !keys.includes(field))) {
-        throw new ApiError(400, "Request body empty or does not contain required fields");
-    }
+    // if (!req.body || Object.keys(req.body).some((field) => !keys.includes(field))) {
+    //     throw new ApiError(400, "Request body empty or does not contain required fields");
+    // }
 
     const { username, email, fullname, password } = req.body;
 
@@ -78,7 +78,7 @@ export const registerUser = asyncHandler( async function(req, res) {
         throw new ApiError(500, "Failed to create user");
     }
 
-    res.status(201).json(
+    return res.status(201).json(
         new ApiResponse(201, foundUser, "User created successfully")
     );
 });
@@ -86,17 +86,10 @@ export const registerUser = asyncHandler( async function(req, res) {
 
 // #region loginUser
 export const loginUser = asyncHandler(async function (req, res) {
-    const { username, email } = req.body;
-
-    if (!username && !email) {
-        throw new ApiError(400, "Either username or email is empty");
-    }
-    if (!password) {
-        throw new ApiError(400, "password is required");
-    }
+    const { identifier, password } = req.body;
 
     const user = await User.findOne({
-        $or: [{username}, {email}]
+        $or: [{username: identifier}, {email: identifier}]
     });
 
     if (!user) {
@@ -118,7 +111,7 @@ export const loginUser = asyncHandler(async function (req, res) {
         secure: true
     };
 
-    res.status(200)
+    return res.status(200)
     .cookie("accessToken", accessToken, cookieOptions)
     .cookie("refreshToken", refreshToken, cookieOptions)
     .json(new ApiResponse(
